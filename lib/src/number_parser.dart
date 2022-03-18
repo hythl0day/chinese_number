@@ -97,6 +97,22 @@ const _kGreaterThanWanPostfixCharacters = ['萬', '万', '億', '亿'];
 
 /// Converter for Chinese numbers.
 class ChineseNumber {
+  static bool isPartOfChineseNumber(CharacterRange source) {
+    if (source.current == '.') {
+      if (source.charactersAfter.isNotEmpty) {
+        if (_kSingleArabicNumberRegex.hasMatch(source.charactersAfter.first)) {
+          return true;
+        }
+        return false;
+      }
+      return false;
+    } else if (_kSingleArabicNumberRegex.hasMatch(source.current) ||
+        _kPartOfChineseNumber.contains(source.current)) {
+      return true;
+    }
+    return false;
+  }
+
   /// Returns the result of the conversion of Chinese number into a Dart number.
   static num? tryParse(String source) {
     if (source.isEmpty) {
@@ -371,20 +387,28 @@ String _toChineseNumber(num value, List<String> digits, Map<int, String> units,
   return result;
 }
 
-String _toChineseNumberWithoutRadix(num value, List<String> digits,
-    Map<int, String> units, Map<int, String> units2, String pointCharacter) {
-  // 小數點分開
-  List numStrList = value.toString().split('.');
-  String intStr =
-      _toChineseNumber(int.tryParse(numStrList.first)!, digits, units, units2);
+String _toChineseNumberWithOutRadix(String source, List<String> digits) {
   String floatStr = '';
-  String rawFloatStr = numStrList.last;
-  List<String> rawFloatStrList = rawFloatStr.split('');
+  List<String> rawFloatStrList = source.split('');
   for (int i = 0; i < rawFloatStrList.length; i++) {
     int c = int.parse(rawFloatStrList[i]);
     floatStr = floatStr + digits[c];
   }
-  return intStr + pointCharacter + floatStr;
+  return floatStr;
+}
+
+String _toFloatChineseNumber(num value, List<String> digits,
+    Map<int, String> units, Map<int, String> units2, String pointCharacter) {
+  // 小數點分開
+  List numStrList = value.toString().split('.');
+  String result =
+      _toChineseNumber(int.tryParse(numStrList.first)!, digits, units, units2);
+  if (numStrList.length > 1) {
+    String rawFloatStr = numStrList.last;
+    final floatStr = _toChineseNumberWithOutRadix(rawFloatStr, digits);
+    result += pointCharacter + floatStr;
+  }
+  return result;
 }
 
 extension ChineseNumberParser on num {
@@ -393,7 +417,7 @@ extension ChineseNumberParser on num {
       return _toChineseNumber(this, _kSimplifiedChineseNumberDigits,
           _kSimplifiedChineseNumberUnits, _kSimplifiedChineseNumberUnits2);
     } else {
-      return _toChineseNumberWithoutRadix(
+      return _toFloatChineseNumber(
           this,
           _kSimplifiedChineseNumberDigits,
           _kSimplifiedChineseNumberUnits,
@@ -410,7 +434,7 @@ extension ChineseNumberParser on num {
           _kFromalSimplifiedChineseNumberUnits,
           _kFromalSimplifiedChineseNumberUnits2);
     } else {
-      return _toChineseNumberWithoutRadix(
+      return _toFloatChineseNumber(
           this,
           _kFormalSimplifiedChineseNumberDigits,
           _kFromalSimplifiedChineseNumberUnits,
@@ -424,7 +448,7 @@ extension ChineseNumberParser on num {
       return _toChineseNumber(this, _kTraditionalChineseNumberDigits,
           _kTraditionalChineseNumberUnits, _kTraditionalChineseNumberUnits2);
     } else {
-      return _toChineseNumberWithoutRadix(
+      return _toFloatChineseNumber(
           this,
           _kTraditionalChineseNumberDigits,
           _kTraditionalChineseNumberUnits,
