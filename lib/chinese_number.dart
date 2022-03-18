@@ -1,3 +1,3 @@
 library chinese_number;
 
-export 'chinese/number_parser.dart';
+export 'src/number_parser.dart';
